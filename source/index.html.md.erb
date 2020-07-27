@@ -1,0 +1,291 @@
+---
+title: Manual de Integración
+
+language_tabs: # must be one of https://git.io/vQNgJ
+  - json
+  - html
+  - java
+
+toc_footers:
+  - <a href='#'>Sign Up for a Developer Key</a>
+  - <a href='https://github.com/slatedocs/slate'>Documentation Powered by Slate</a>
+
+includes:
+  - errors
+  - test-images.md.erb
+
+search: true
+---
+
+# Introduccion
+
+SPayN, se define como el ecosistema creado por Seglan S.L. y facilitados a los clientes, en adelante
+merchants, para procesar pagos a través de distintos canales.
+
+SPayN no sólo procesa pagos sino que da el soporte necesario para realizar todas las operaciones
+satélites que surgen de esta operativa, tales como gestión de clientes, wallets, tokenización de tarjetas, gestión
+de fraude, conciliación...
+
+SPayN cumple el standard de pagos PCI DSS en su versión 3.2 y aprueba con éxito cada auditoría de
+seguridad realizada por terceros.
+
+Se trata, pues, de un sistema seguro de gestión de pagos puesto al servicio de los clientes que les
+permita realizar cobros con la mínima integración posible.
+
+# Principales características
+
+SPayN es un sistema extenso con numerosas funcionalidades, entre las cuales podemos destacar las siguientes.
+
+##  Sistema multi-canal
+SPayN dispone un abanico de canales a través de los cuales realizar el cobro. SPayN no sólo admite pagos mediante tarjetas de débito/crédito, sino que implementa una lista configurable de canales a ofertar al usuario para que él elija su canal favorito. Algunos de ellos son: Google Pay, Apple Pay, Paypal, Trustly, Sofort… Si el merchant desea activar alguno de ellos deberá en ponerse en contacto con <a href='email:soporte@spayn.es'>soporte@spayn.es</a>
+
+El merchant podrá tener habilitados los canales deseados a nivel global para todos los pagos y a nivel particular para cada pago mediante las llamadas API que provee.
+Un ejemplo de pantalla que podría visualizar un usuario al realizar su pago es la siguiente:
+
+<%= image_tag "images/ejemplopantalla.png" %>
+
+## Sistema multi-dispositivo
+
+La API de SPayN cubrirá las necesidades de los merchants para solicitar pagos a través de distintos dispositivos, los cuales los podemos clasificar en los siguientes grupos:
+
+  • Dispositivos móviles: SPayN provee de una SDK móvil a integrar en las aplicaciones de los merchants a través de la cual gestionar las llamadas necesarias para efectuar el cobro.
+  
+  • Navegadores: SPayN proveerá las llamadas necesarias para cargar un iframe dentro la web del merchant a través del cual el usuario pueda efectuar el pago.
+  
+  • Servidores: SPayN proveerá llamadas entre el servidor del merchant y el propio SPayN para aquellas peticiones relacionadas con el mantenimiento del sistema (ejecución de pagos a través de tokens, gestión de wallets, conciliación...)
+
+## Enrutamiento de pagos por tarjeta
+
+Con el fin de optimizar las comisiones aplicadas por las distintas entidades sobre las transacciones, SPayN permitirá configurar distintas entidades para distintos rangos de bines.
+
+## Tokenización
+
+SPayN integra el TSP (Token Service Provider) de Seglan S.L. para realizar la tokenización de tarjetas de crédito.  Esto es, SPayN convertirá tarjetas reales (panes) en tarjetas virtuales que serán facilitadas al backend del merchant con el fin de poder ejecutar pagos programados futuros sin la interacción del usuario.
+
+## Wallet vs pagos anónimos 
+
+El modelo de datos de SPayN permite gestionar wallets en los cuales se gestionen los token de las tarjetas virtualizadas por el usuario en cuestión. Es decir, el usuario1 del merchant podrá tener virtualizadas n-tarjetas de modo que le simplifique la operativa para los sucesivos pagos.
+
+Por otro lado SPayN permitirá pagos anónimos solicitados por el merchant, es decir, pagos en los que no se utilice ni genere ningún wallet.
+
+## Gestión de fraude
+
+SPayN provee al administrador del merchant una serie de reglas anti-fraude que el pago deberá de cumplir antes de ser ejecutado. El administrador del merchant podrá configurar los límites que deberán de aplicarse en las reglas. 
+
+## Conciliación
+
+SPayN provee servicios de conciliación a través de los cuales el merchant pueda solicitar la información de las transacciones llevadas a cabo y así comprobar que su sistema se encuentra en sintonía con lo reflejado en SPayN. 
+
+## Panel de administración
+
+SPayN dispone de un panel de administración accesible para administradores del merchant a través del cual gestionar la parametrización, consultar las transacciones mediante dashboards, realizar devoluciones de los pagos en caso de ser necesarias...
+
+# API
+
+SPayN expone una serie de servicios en los entornos de test y producción. Las urls de dichos entornos comparten el path y se diferencian por el dominio al que acceden.
+
+A continuación se indican las url base de los distintos entornos, a los cuales se deberán concatenar los path de cada operación particular:
+
+
+Nombre |  Url | Ejemplo para el path “/brw/token/request”
+-------|------|------------------------------------------
+Test | https://test.spayn.es/psp | https://test.spayn.es/brw/token/request
+Producción | https://psp.spayn.es | https://psp.spayn.es/psp/brw/token/request
+
+# API SDK
+
+SPayN ofrece una SDK móvil para dispositivos Android e IOS que integrará toda la lógica de comunicación con el servidor del SpayN.  
+
+Aquellos merchants que deseen integrar la SDK deberán ponerse en contacto con <a href='email:soporte@spayn.es'>soporte@spayn.es</a>
+
+
+# API Browser
+SPayN permite la carga en la pantalla del navegador un iframe (o la web completa) para procesar el flujo del pago, gestionar el wallet y otras operaciones.
+El flujo simplificado sería el siguiente:
+
+1. El servidor del merchant solicita al servidor de SPayN un token
+
+2. El servidor del merchant manda al navegador del usuario el token para enviarlo con un formulario con auto submit al servidor de SPayN. 
+
+3. SPayN cargará en el navegador del usuario las pantallas necesarias para el flujo indicado en el primer punto.
+
+4. Cuando el usuario finalice su operativa será redirigido a la web del merchant con resultados básicos del proceso.
+
+5. Si el servidor del merchant desea conocer el resto de datos hará una llamada al servidor de SPayN solicitándolos.
+
+## Token Request
+Se trata de una petición servidor-servidor, iniciada por el merchant y atendida por SPayN que tiene como objetivo la solicitud del token y la url de carga del iframe.
+
+Para ello el merchant enviará los datos necesarios a SPayN y éste, una vez validados, le responderá con un token y la url a la que ha de acceder.
+
+### HTTP Request
+
+`POST /brw/token/request`
+
+Campo | Descripción | Tipo
+--------- | ------- | -----------
+MERCHANT | Identificador del merchant asignado por SPayN | Obligatorio: alfanumérico (1-25)
+ACCOUNT | Identificador de cuenta del merchant | Opcional: alfanumérico (0-25)
+CLIENT | Identificador del cliente en los sistemas del merchant. Si el cliente no existe se creará. | Opcional: alfanumérico (0-50)
+MVC | Token de la tarjeta. En caso de enviarse se efectuará el pago directamente utilizando ese token. | Opcional: numérico (12-19)
+AMOUNT | Importe de la transacción en la unidad mínima de la moneda. La discriminación de decimales se hará a través del campo CURRENCY. Ejemplo: para enviar 30,12 euros en este campo viajará el valor 3012 y en el campo CURRENCY 978 | Obligatorio: numérico (1, 10)
+CURRENCY | Código de tres dígitos de la moneda en el estándar ISO4217 |Obligatorio: numérico (3)
+MERCHANT_OPERATION | Identificador único de la transacción entre todas las realizadas por el merchant. Si el merchant no informa este campo, SPayN generará uno único y lo devolverá al merchant en el response. |Opcional: alfanumérico (0-50)
+CONCEPT | Concepto de la transacción. Breve descripción del objeto de la misma. | Opcional: alfanumérico (0-100)
+REFERENCE | Si esta operación tiene un identificador en los sistemas del merchant podrá enviarlo aquí y visualizarlo en el panel admin y en los intercambios de conciliación. | Opcional: alfanumérico (0-50)
+REDIRECT_URL | Url del merchant a la que quiere que se redirija al usuario una vez finalizadas las acciones pertinentes dentro del iframe. | Obligatorio: URL (11-2048)
+PARAMS | Mapa clave-valor que puede contener las siguientes claves
+        | SECURE_TYPE → Comportamiento que tendrá el pago. Tendrá prioridad respecto a la configuración global del comercio. | Opcional, uno de los siguientes valores: SECURE (forzar a que el pago sea seguro), NOT_SECURE (forzar a que el pago sea no seguro), DEFINED_BY_RULES (delegar en las reglas de seguridad, opción por defecto)
+        | FILTER_CHANNELS → En caso de que el merchant tenga configurados más de un canal de pago a nivel global se podrán restringir para una petición concreta. Ejemplo: si el merchant tiene configurados CARD y ANDROID_PAY pero en este campo viaja CARD, el usuario sólo visualizará la opción CARD para pagar. | Opcional: valores a consultar con Seglan
+        | BASE_BACKGROUND_COLOR → Color base de fondo | Opcional: color en hexadecimal con el siguiente formato: #abc123
+        | FRAME_BACKGROUND_COLOR → Color de fondo del frame | Opcional: color en hexadecimal con el siguiente formato: #abc123
+        | FRAME_LABEL_COLOR → Color de la fuente de los textos | Opcional: color en hexadecimal con el siguiente formato: #abc123
+        | BUTTON_BACKGROUND_COLOR → Color del fondo de los botones | Opcional: color en hexadecimal con el siguiente formato: #abc123
+        | BUTTON_LABEL_COLOR → Color del texto de los botones | Opcional: color en hexadecimal con el siguiente formato: #abc123
+        | AUTO_REDIRECT → true hará que se redirija directamente al sitio del merchant tras la finalización del pago en lugar de que SPayN muestre la pantalla resumen. | Opcional: booleano
+        | TEXT_LABEL_AMOUNT → Texto de la label importe | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_CONCEPT → Texto de la label concepto | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_ALIAS → Texto de la label alias | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_CARD → Texto de la label tarjeta | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_EXP_MONTH → Texto de la label mes de caducidad | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_EXP_YEAR → Texto de la label año de caducidad | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_PAYMENT_DATE → Texto de la label de la fecha de pago | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_PAN → Texto de la label del PAN | Opcional: alfanumérico (0-50)
+        | TEXT_LABEL_AUTH_CODE → Texto de la label del código de autorización |Opcional: alfanumérico (0-50)
+        | TEXT_BUTTON_BACK → Texto del botón volver | Opcional: alfanumérico (0-50)
+SIGNATURE |  Firma del mensaje (ver anexo) concatenando los campos siguientes: MERCHANT, ACCOUNT, CLIENT, MVC, AMOUNT, CURRENCY, MERCHANT_OPERATION, REDIRECT_URL | Obligatorio: hexadecimal (64)
+
+
+
+> Ejemplo de petición:
+
+```json
+{
+    "MERCHANT": "merchantDev",
+    "CLIENT": "1234ABC",
+    "AMOUNT": "0",
+    "CURRENCY": "978",
+    "CONCEPT": "enrollment",
+    "REFERENCE": "reference",
+    "REDIRECT_URL": "https://testgateway.seglan.com/psp/test/redirect",
+    "PARAMS": {
+        "SECURE_TYPE": "SECURE"
+    },
+    "SIGNATURE": "6bca295dca19ac24b43236bb222e3ae68f0bf4e3f59adefcfb0a34c866fadcde"
+  }
+```
+
+<aside class="notice">
+Asegúrese de reemplazar <code>`https://testgateway.seglan.com/psp/test/redirect`</code> con su URL de redirección.
+</aside>
+
+
+
+> La respuesta vendría informada con el siguiente formato:
+
+Campo | Descripción | Tipo
+--------- | ------- | -----------
+TOKEN | Token único y volátil para la carga del iframe | Obligatorio: UUID (36)
+URL | Url contra la que tendrá que cargarse el token anterior | Obligatorio: URL (11-2048)
+MERCHANT_OPERATION | Identificador único de la transacción entre todas las realizadas por el merchant. | Obligatorio: alfanumérico (1-50)
+
+
+```json
+{
+    "MERCHANT_OPERATION": "18010050fcpq58b",
+    "TOKEN": "f1a979c0-bd11-42d3-8001-482875c49fa1",
+    "URL": "https://testgateway.seglan.com/psp/web/token/load"
+}
+```
+
+## Token load
+Una vez obtenido el token y la url se procederá a la carga en pantalla la web de SPayN en la que navegará el usuario. 
+
+A continuación se muestra un ejemplo de carga en pantalla
+
+``` html
+<form id="formPost" action="https://testgateway.seglan.com/psp/web/token/load" method="POST" autocomplete="off">
+	<input type="hidden" name="TOKEN" value="c95cc512-91b0-4e1c-b915-ea9ad07ea58e">
+	<noscript>
+		<h2>
+			JavaScript is currently disabled or is not supported by your browser.<br>
+		</h2>
+		<h3>Please click Submit to continue the processing of your 3-D Secure transaction.</h3>
+		<input type="submit" value="Submit">
+	</noscript>
+</form>
+
+<script type="text/javascript">
+	document.forms['formPost'].submit();
+</script>
+```
+
+## Redirect
+Dentro del iframe el usuario tendrá un botón con la posibilidad de volver al site del merchant, tanto durante el proceso como al final del pago si lo hubiera.
+
+SPayN redirigirá al usuario a la url indicada en la petición token request en el campo REDIRECT_URL. 
+
+Será un POST en el que SPayN informará los siguientes campos
+
+Campo | Descripción | Tipo
+--------- | ------- | -----------
+MERCHANT | Identificador del merchant asignado por SPayN | Obligatorio: alfanumérico (1-25)
+MERCHANT_OPERATION | Identificador único de la transacción entre todas las realizadas por el merchant. | Obligatorio: alfanumérico (1-50)
+STATUS | Estado de la transacción realizada (si la hubiera). Si el usuario no realiza ninguna transacción este campo no se informará. | Opcional: numérico (3)
+
+# API Server
+SPayN expone los siguientes servicios accesibles desde el servidor del merchant
+
+## Gestión de clientes
+Mediante este servicio se podrá dar de alta, consultar, actualizar y borrar un cliente del merchant en SPayN.
+
+`REQUEST /server/client`
+
+Campo | Descripción | Tipo
+--------- | ------- | -----------
+MERCHANT | Identificador del merchant asignado por SPayN | Obligatorio: alfanumérico (1-25)
+CLIENT | Identificador del cliente en los sistemas del merchant. | Obligatorio: alfanumérico (0-50)
+ACTION | Acción que se desea realizar sobre el identificador de cliente enviado. Se podrá consultar el estado, crearlo, actualizarlo o borrarlo. | Obligatorio: CHECK, CREATE, UPDATE, DELETE
+STATUS | Estado en el que se desea dejar el cliente en caso de creación o actualización del mismo. Condicional: obligatorio para CREATE y UPDATE. | Posibles valores: ACTIVE, INACTIVE
+SIGNATURE | Firma del mensaje (ver anexo) concatenando los campos siguientes: MERCHANT, CLIENT, ACTION, STATUS |Obligatorio: hexadecimal (64)
+
+```json
+{
+    "MERCHANT": "merchantDev",
+    "CLIENT": "1234ABC",
+    "ACTION": "CHECK",
+    "SIGNATURE": "05f4eb3d256f0fb2c45de4ec9dc5dde7e7a2e5b472bd945d8cb14d3c8ae8787d"
+}
+```
+
+`RESPONSE`
+Campo | Descripción | Tipo
+--------- | ------- | -----------
+STATUS |Estado en el que ha quedado el cliente tras realizarse las acciónrequerida en el request. | Obligatorio: ACTIVED, NOT_ACTIVED, DELETED, NOT_EXISTS
+MVCS | Listado de MVCs asociados al cliente. Esta información sólo se envía si el STATUS es ACTIVED o NOT_ACTIVED | Condicional: JSON
+
+<aside class="notice">
+ El campo MVC vendrá informado con los siguientes campos
+</aside>
+
+Campo | Descripción | Tipo
+--------- | ------- | -----------
+ALIAS | Alias de la tarjeta. | Obligatorio: alfanumérico (1-50)
+PAN | Pan de la tarjeta. | Obligatorio: alfanumérico (12-19)
+MVC | Token de la tarjeta. | Obligatorio: numérico (12-19)
+STATUS | Estado actual del token. | Obligatorio: ACTIVE, INACTIVE, PENDING_VERIFICATION, EXPIRED, DELETED
+
+Ejemplo
+```json
+{
+    "STATUS": "ACTIVE"
+    "MVCS": [{
+        "ALIAS": "tarjeta de pruebas",
+        "PAN": "454881xxxxxxxxxx",
+        "MVC": "1913820003541740",
+        "STATUS": "ACTIVE"
+    }]
+}
+```
+## Gestión de tarjetas
+Mediante este servicio se podrá consultar, actualizar y borrar una tarjeta asociada a un cliente del merchant en SPayN.
